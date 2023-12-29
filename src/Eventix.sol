@@ -72,7 +72,8 @@ contract Eventix is ERC721,EIP712,AccessControl{
     mapping(uint256 => address) public tokenIdToAddress;
 
     //Events
-    event TicketMinted(uint256 _price,Tier _tier,uint256 _tokenId,uint256 _date,address _to);
+    event TicketMinted(uint256 indexed _price,Tier _tier,uint256 indexed _tokenId,uint256 _date,address indexed _to);
+    event TicketResale(address indexed seller,address indexed buyer,uint256 indexed ticketId);
 
     //modifiers
     modifier onlySeller(uint256 _tokenId){
@@ -117,13 +118,16 @@ contract Eventix is ERC721,EIP712,AccessControl{
     }
 
     function encodeSale(Sale calldata sale)
-    public view onlySeller(sale.ticketId)
+    public  onlySeller(sale.ticketId)
     returns(bytes memory)
     {
+        require(tokenIdExists[sale.ticketId]=true,"TicketId doesn't exist");
+        require(tokenIdToAddress[sale.ticketId]==sale.seller,"not the owner");
+        require(sale.buyer!=address(0),"address doesn't exist");
         return abi.encode(
             SALE_TYPEHASH,
-            sale.buyer,
             sale.seller,
+            sale.buyer,
             sale.ticketId,
             sale.price
         );
@@ -135,13 +139,17 @@ contract Eventix is ERC721,EIP712,AccessControl{
         ) 
         external onlySeller(sale.ticketId) 
     {
-        require(ownerOf(sale.ticketId)==sale.seller,"only owner can sell their NFTs");
+        require(tokenIdExists[sale.ticketId]==true,"Invalid ticket Id");
+        require(tokenIdToAddress[sale.ticketId]==sale.seller,"not the owner");
 
         address signer = _hashTypedDataV4(
             keccak256(encodeSale(sale))
         ).recover(signature);   
 
         require(signer==ownerOf(sale.ticketId),"Only owner can be the signer"); 
+
+        tokenIdToAddress[sale.ticketId]=sale.buyer;
+        emit TicketResale(sale.seller,sale.buyer,sale.ticketId);
 
         safeTransferFrom(sale.seller,sale.buyer,sale.ticketId);
     }
