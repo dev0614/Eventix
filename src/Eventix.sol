@@ -27,12 +27,14 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 //Errors
 error Eventix__OnlySellerCanEncode();
 
 contract Eventix is ERC721,EIP712,AccessControl{
+    using ECDSA for bytes32;
 
     //Enum
     enum Tier{
@@ -53,7 +55,7 @@ contract Eventix is ERC721,EIP712,AccessControl{
     struct Sale{
         address seller;
         address buyer;
-        uint256 tokenId;
+        uint256 ticketId;
         uint256 price;
     }
 
@@ -115,20 +117,33 @@ contract Eventix is ERC721,EIP712,AccessControl{
     }
 
     function encodeSale(Sale calldata sale)
-    public view onlySeller(sale.tokenId)
+    public view onlySeller(sale.ticketId)
     returns(bytes memory)
     {
         return abi.encode(
             SALE_TYPEHASH,
             sale.buyer,
             sale.seller,
-            sale.tokenId,
+            sale.ticketId,
             sale.price
         );
     }
 
-    function ticketSale(Sale calldata sale,bytes calldata signatute) external onlySeller(sale.tokenId) {
-        
+    function ticketSale(
+        Sale calldata sale,
+        bytes calldata signature
+        ) 
+        external onlySeller(sale.ticketId) 
+    {
+        require(ownerOf(sale.ticketId)==sale.seller,"only owner can sell their NFTs");
+
+        address signer = _hashTypedDataV4(
+            keccak256(encodeSale(sale))
+        ).recover(signature);   
+
+        require(signer==ownerOf(sale.ticketId),"Only owner can be the signer"); 
+
+        safeTransferFrom(sale.seller,sale.buyer,sale.ticketId);
     }
 
 
