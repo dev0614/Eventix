@@ -32,6 +32,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 
 //Errors
 error Eventix__OnlySellerCanEncode();
+error Eventix__TicketIsInvalid();
 
 contract Eventix is ERC721,EIP712,AccessControl{
     using ECDSA for bytes32;
@@ -47,9 +48,10 @@ contract Eventix is ERC721,EIP712,AccessControl{
     struct TicketInfo{
         uint256 id;
         Tier tier;
-        uint256 price;
+        uint256 basePrice;
         uint256 date;
-        address owner;
+        uint256 initialtimeToEvent;
+        address payable owner;
     }
 
     struct Sale{
@@ -58,22 +60,35 @@ contract Eventix is ERC721,EIP712,AccessControl{
         uint256 ticketId;
         uint256 price;
     }
+    /**
+     * owner
+     * basePrice
+     * timeToEvent
+     * ticketId
+     * tier
+     */
 
     //state variables
     string public  _name;
     uint256 public tokenCounters=0;
+    uint256 public poolCounter=0;
+    uint256[] public ticketsInThePool;
+    uint8[] public priceShift;
     bytes32 public constant MINTER_ROLE=keccak256("MINTER_ROLE");
     bytes32 public constant SALE_TYPEHASH=keccak256("Sale(address seller,address buyer,uint256 tokenId,uint256 price)");
 
     //mappiing
-    mapping(uint256 => bool)public tokenIdExists;
+    mapping(uint256 => bool)public isValid;
     mapping(Tier => uint256)public tierToPrice;
     mapping(uint256 => TicketInfo) public idToTicketInfo;
     mapping(uint256 => address) public tokenIdToAddress;
+    mapping(uint256 => uint256) public poolCounterToId;
 
     //Events
     event TicketMinted(uint256 indexed _price,Tier _tier,uint256 indexed _tokenId,uint256 _date,address indexed _to);
     event TicketResale(address indexed seller,address indexed buyer,uint256 indexed ticketId);
+    event TicketAddedToPool(address indexed owner,uint256 indexed _ticketId);
+    event TicketSoldThroughPool(uint256 _ticketId,address buyer);
 
     //modifiers
     modifier onlySeller(uint256 _tokenId){
@@ -82,6 +97,21 @@ contract Eventix is ERC721,EIP712,AccessControl{
         }
         _;
     }
+    modifier isValiid(uint256 _ticketId){
+        if(isValid[_ticketId]==true){
+            revert Eventix__TicketIsInvalid();
+        }
+        _;
+    }
+    /**
+     * 
+     * 
+    modifier saleValidation(){
+        if(isValid[Sale.ticketId]!=false || tokenIdToAddress[Sale.ticketId]!=Sale.seller){
+            revert Eventix__SaleValidationFailed();
+        }
+    }
+     */
 
 
     constructor(address _minter)ERC721("Eventix","EVX")EIP712("Eventix","1.00"){
@@ -95,7 +125,8 @@ contract Eventix is ERC721,EIP712,AccessControl{
         uint256 _price,
         Tier _tier,
         uint256 _date,
-        address _to
+        uint256 numdaysToEvent,
+        address payable _to
         )
         public onlyRole(MINTER_ROLE)
     {
@@ -104,24 +135,25 @@ contract Eventix is ERC721,EIP712,AccessControl{
         tierToPrice[Tier.Diamond]=_price + ((_price*50)/100);
 
         uint256 tokenId=uint256(keccak256(abi.encodePacked(block.timestamp,_to,tokenCounters)));
+        uint256 initialTimeToEvent=block.timestamp + (numdaysToEvent * 1 days);
 
         //mintingNFT
         _mint(_to,tokenId);
 
         //recording ticket details
-        idToTicketInfo[tokenId]=TicketInfo(tokenId,_tier,tierToPrice[_tier],_date,_to);
+        idToTicketInfo[tokenId]=TicketInfo(tokenId,_tier,tierToPrice[_tier],_date,initialTimeToEvent,_to);
         tokenIdToAddress[tokenId]=_to;
-        tokenIdExists[tokenId]=true;
+        isValid[tokenId]=true;
 
         tokenCounters++;
         emit TicketMinted(tierToPrice[_tier],_tier,tokenId,_date,_to);
     }
 
     function encodeSale(Sale calldata sale)
-    public  onlySeller(sale.ticketId)
+    public  view onlySeller(sale.ticketId) 
+    isValiid(sale.ticketId)
     returns(bytes memory)
     {
-        require(tokenIdExists[sale.ticketId]=true,"TicketId doesn't exist");
         require(tokenIdToAddress[sale.ticketId]==sale.seller,"not the owner");
         require(sale.buyer!=address(0),"address doesn't exist");
         return abi.encode(
@@ -137,10 +169,10 @@ contract Eventix is ERC721,EIP712,AccessControl{
         Sale calldata sale,
         bytes calldata signature
         ) 
-        external onlySeller(sale.ticketId) 
+        external onlySeller(sale.ticketId) isValiid(sale.ticketId)
     {
-        require(tokenIdExists[sale.ticketId]==true,"Invalid ticket Id");
         require(tokenIdToAddress[sale.ticketId]==sale.seller,"not the owner");
+        require(sale.buyer!=address(0),"Cannot send to a null address");
 
         address signer = _hashTypedDataV4(
             keccak256(encodeSale(sale))
@@ -152,6 +184,78 @@ contract Eventix is ERC721,EIP712,AccessControl{
         emit TicketResale(sale.seller,sale.buyer,sale.ticketId);
 
         safeTransferFrom(sale.seller,sale.buyer,sale.ticketId);
+    }
+
+    function addToPool(uint256 _ticketId)external isValiid(_ticketId){
+        require(isValid[_ticketId]==true,"Invalid ticket Id");
+        require(ownerOf(_ticketId)==msg.sender,"only owner can add ticket to the pool");
+
+        _transfer(msg.sender,address(this),_ticketId);
+
+        /**
+         * 
+        poolCounterToId[poolCounter]=_ticketId;
+        poolCounter++;
+         */
+
+        ticketsInThePool.push(_ticketId);
+
+        emit TicketAddedToPool(msg.sender,_ticketId);
+    }
+    function calculateNewPrice(uint256 _ticketId)public isValiid(_ticketId) returns (uint256){
+        require(ownerOf(_ticketId)==address(this),"This ticket is not added to the pool");
+        require(idToTicketInfo[_ticketId].initialtimeToEvent>block.timestamp,"Event already finished");
+
+        uint256 currentTimeToEvent=idToTicketInfo[_ticketId].initialtimeToEvent-block.timestamp;
+        uint256 category;
+
+        if(currentTimeToEvent> 7 days){
+            category=0;
+        }
+        else if(currentTimeToEvent>3 && currentTimeToEvent<=7 days){
+            category=1;
+        }
+        else{
+            category=2;
+        }
+
+        priceShift = [0, 25, 55];
+
+        return idToTicketInfo[_ticketId].basePrice + (idToTicketInfo[_ticketId].basePrice* priceShift[category])/100;
+    }
+
+    function buyFromPool()external payable{
+
+        uint256 _ticketId=ticketsInThePool[0];
+        require(ownerOf(_ticketId)==address(this),"This ticket is not added to the pool");
+        require(isValid[_ticketId]==true,"ticketId is not valid");
+        uint256 ticketPrice=calculateNewPrice(_ticketId);
+
+        require(msg.value>=ticketPrice,"Have to send the ticketPrice at least");
+
+        _transfer(address(this),msg.sender,_ticketId);
+        address payable seller=idToTicketInfo[_ticketId].owner;
+        idToTicketInfo[_ticketId].owner=payable(address(0));
+
+        seller.transfer(ticketPrice);
+        
+        idToTicketInfo[_ticketId].owner=payable(msg.sender);
+        tokenIdToAddress[_ticketId]=msg.sender;
+
+        removeFromPool();
+        
+
+        emit TicketSoldThroughPool(_ticketId,msg.sender);
+
+    }
+
+    // Internal function to remove the sold ticket and shift others in the queue
+    function removeFromPool()internal{
+
+        for(uint i=0;i<ticketsInThePool.length-1;i++){
+            ticketsInThePool[i]=ticketsInThePool[i+1];
+        }
+        ticketsInThePool.pop();
     }
 
 
