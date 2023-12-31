@@ -34,7 +34,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 error Eventix__OnlySellerCanEncode();
 error Eventix__TicketIsInvalid();
 
-contract Eventix is ERC721,EIP712,AccessControl{
+contract Eventix is ERC721,EIP712,AccessControl,ERC721URIStorage{
     using ECDSA for bytes32;
 
     //Enum
@@ -69,7 +69,6 @@ contract Eventix is ERC721,EIP712,AccessControl{
      */
 
     //state variables
-    string public  _name;
     uint256 public tokenCounters=0;
     uint256 public poolCounter=0;
     uint256[] public ticketsInThePool;
@@ -82,7 +81,7 @@ contract Eventix is ERC721,EIP712,AccessControl{
     mapping(Tier => uint256)public tierToPrice;
     mapping(uint256 => TicketInfo) public idToTicketInfo;
     mapping(uint256 => address) public tokenIdToAddress;
-    mapping(uint256 => uint256) public poolCounterToId;
+    //mapping(uint256 => uint256) public poolCounterToId;
 
     //Events
     event TicketMinted(uint256 indexed _price,Tier _tier,uint256 indexed _tokenId,uint256 _date,address indexed _to);
@@ -115,7 +114,6 @@ contract Eventix is ERC721,EIP712,AccessControl{
 
 
     constructor(address _minter)ERC721("Eventix","EVX")EIP712("Eventix","1.00"){
-        _name="Eventix";
         _grantRole(MINTER_ROLE,_minter);
         _grantRole(DEFAULT_ADMIN_ROLE,msg.sender);
     }
@@ -126,7 +124,8 @@ contract Eventix is ERC721,EIP712,AccessControl{
         Tier _tier,
         uint256 _date,
         uint256 numdaysToEvent,
-        address payable _to
+        address payable _to,
+        string memory _tokenURI
         )
         public onlyRole(MINTER_ROLE)
     {
@@ -140,6 +139,9 @@ contract Eventix is ERC721,EIP712,AccessControl{
         //mintingNFT
         _mint(_to,tokenId);
 
+        //setting tokenURI for the minted NFT
+        _setTokenURI(tokenId,_tokenURI);
+
         //recording ticket details
         idToTicketInfo[tokenId]=TicketInfo(tokenId,_tier,tierToPrice[_tier],_date,initialTimeToEvent,_to);
         tokenIdToAddress[tokenId]=_to;
@@ -148,6 +150,17 @@ contract Eventix is ERC721,EIP712,AccessControl{
         tokenCounters++;
         emit TicketMinted(tierToPrice[_tier],_tier,tokenId,_date,_to);
     }
+
+    // Override the tokenURI function
+    function tokenURI(uint256 tokenId)
+        public
+        view
+        override(ERC721, ERC721URIStorage)
+        returns (string memory)
+    {
+        return super.tokenURI(tokenId);
+    }
+
 
     function encodeSale(Sale calldata sale)
     public  view onlySeller(sale.ticketId) 
@@ -259,7 +272,7 @@ contract Eventix is ERC721,EIP712,AccessControl{
     }
 
 
-    function supportsInterface(bytes4 interfaceId) public view override(AccessControl,ERC721) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view override(AccessControl,ERC721,ERC721URIStorage) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 }
