@@ -151,17 +151,6 @@ contract Eventix is ERC721,EIP712,AccessControl,ERC721URIStorage{
         emit TicketMinted(tierToPrice[_tier],_tier,tokenId,_date,_to);
     }
 
-    // Override the tokenURI function
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        override(ERC721, ERC721URIStorage)
-        returns (string memory)
-    {
-        return super.tokenURI(tokenId);
-    }
-
-
     function encodeSale(Sale calldata sale)
     public  view onlySeller(sale.ticketId) 
     isValiid(sale.ticketId)
@@ -270,9 +259,39 @@ contract Eventix is ERC721,EIP712,AccessControl,ERC721URIStorage{
         }
         ticketsInThePool.pop();
     }
+      /////////////////////
+     /// Get Functions////
+    /////////////////////
 
+    function getTier(uint256 tierNum) public pure returns (Tier) {
+        
+        if (tierNum == 0) {
+            return Tier.Gold;
+        } else if (tierNum == 1) {
+            return Tier.Platinum;
+        } else if (tierNum == 2) {
+            return Tier.Diamond;
+        } else {
+            // Handle out-of-range input or return a default value
+            revert("Invalid tier number");
+        }
+    }
 
-    function supportsInterface(bytes4 interfaceId) public view override(AccessControl,ERC721,ERC721URIStorage) returns (bool) {
+    function tokenURI(uint256 tokenId)
+        public
+        view
+        override(ERC721, ERC721URIStorage)
+        returns (string memory)
+    {
+        return super.tokenURI(tokenId);
+    }
+
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(AccessControl,ERC721,ERC721URIStorage) 
+        returns (bool) 
+    {
         return super.supportsInterface(interfaceId);
     }
 }
