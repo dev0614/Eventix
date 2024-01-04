@@ -128,6 +128,7 @@ contract Eventix is ERC721,EIP712,AccessControl,ERC721URIStorage{
         string memory _tokenURI
         )
         public onlyRole(MINTER_ROLE)
+        returns(uint256)
     {
         tierToPrice[Tier.Gold]=_price;
         tierToPrice[Tier.Platinum]=_price+((_price*20)/100);
@@ -149,6 +150,8 @@ contract Eventix is ERC721,EIP712,AccessControl,ERC721URIStorage{
 
         tokenCounters++;
         emit TicketMinted(tierToPrice[_tier],_tier,tokenId,_date,_to);
+
+        return tokenId;
     }
 
     function encodeSale(Sale calldata sale)
@@ -263,8 +266,12 @@ contract Eventix is ERC721,EIP712,AccessControl,ERC721URIStorage{
      /// Get Functions////
     /////////////////////
 
-    function getTier(uint256 tierNum) public pure returns (Tier) {
-        
+    function getTier(uint256 tierNum) 
+        public 
+        pure 
+        returns (Tier) 
+    {
+
         if (tierNum == 0) {
             return Tier.Gold;
         } else if (tierNum == 1) {
@@ -276,6 +283,23 @@ contract Eventix is ERC721,EIP712,AccessControl,ERC721URIStorage{
             revert("Invalid tier number");
         }
     }
+
+    function getInitialTimeToEvent(uint256 _ticketId)
+        public 
+        view 
+        returns(uint256)
+    {
+        return idToTicketInfo[_ticketId].initialtimeToEvent;
+    }
+    function getAddressMintedTo(uint256 _ticketId)
+        public 
+        view 
+        returns(address)
+    {
+        return idToTicketInfo[_ticketId].owner;
+    }
+
+    ////////
 
     function tokenURI(uint256 tokenId)
         public
