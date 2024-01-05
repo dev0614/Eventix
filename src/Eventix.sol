@@ -301,6 +301,26 @@ contract Eventix is ERC721,EIP712,AccessControl,ERC721URIStorage{
 
     ////////
 
+    /**
+     * @dev Grants the minter role to a specified address.
+     * @param account Address to be granted the role.
+     */
+    function grantMinterRole(
+        address account
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _grantRole(MINTER_ROLE, account);
+    }
+    
+    /**
+     * @dev Revokes the minter role from a specified address.
+     * @param account Address from which the role needs to be revoked.
+     */
+    function revokeMinterRole(
+        address account
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _revokeRole(MINTER_ROLE, account);
+    }
+
     function tokenURI(uint256 tokenId)
         public
         view
