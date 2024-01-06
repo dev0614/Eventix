@@ -6,6 +6,7 @@ import {Eventix} from "../../src/Eventix.sol";
 import {Test} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {DeployEventix} from "../../script/DeployEventix.s.sol";
+import {ISale} from "../../src/ISale.sol";
 
 contract EventixTest is Test{
     Eventix eventix;
@@ -30,13 +31,13 @@ contract EventixTest is Test{
         Diamond
     }
 
-    //struct
-    struct Sale{
-        address seller;
-        address buyer;
-        uint256 ticketId;
-        uint256 price;
-    }
+    // //struct
+    // struct Sale{
+    //     address seller;
+    //     address buyer;
+    //     uint256 ticketId;
+    //     uint256 price;
+    // }
 
     //Events
     event TicketMinted(uint256 indexed _price,Tier _tier,uint256 indexed _tokenId,uint256 _date,address indexed _to);
@@ -122,12 +123,14 @@ contract EventixTest is Test{
             _to,
             _tokenURI
         );
-    Sale memory sale=Sale({
+    ISale.Sale memory sale=ISale.Sale({
         seller:_to,
         buyer:msg.sender,
         ticketId:_ticketId,
         price:_price
     });
+     eventix.encodeSale(sale);
+     //eventix.ticketSale(sale,)
     
      
 

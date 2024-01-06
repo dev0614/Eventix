@@ -30,12 +30,15 @@ import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
+import "./ISale.sol";
+
 //Errors
 error Eventix__OnlySellerCanEncode();
 error Eventix__TicketIsInvalid();
 
 contract Eventix is ERC721,EIP712,AccessControl,ERC721URIStorage{
     using ECDSA for bytes32;
+    
 
     //Enum
     enum Tier{
@@ -54,12 +57,12 @@ contract Eventix is ERC721,EIP712,AccessControl,ERC721URIStorage{
         address payable owner;
     }
 
-    struct Sale{
-        address seller;
-        address buyer;
-        uint256 ticketId;
-        uint256 price;
-    }
+    // struct Sale{
+    //     address seller;
+    //     address buyer;
+    //     uint256 ticketId;
+    //     uint256 price;
+    // }
     /**
      * owner
      * basePrice
@@ -154,41 +157,41 @@ contract Eventix is ERC721,EIP712,AccessControl,ERC721URIStorage{
         return tokenId;
     }
 
-    function encodeSale(Sale calldata sale)
-    public  view onlySeller(sale.ticketId) 
-    isValiid(sale.ticketId)
+    function encodeSale(ISale.Sale memory mySale)
+    public  view onlySeller(mySale.ticketId) 
+    isValiid(mySale.ticketId)
     returns(bytes memory)
     {
-        require(tokenIdToAddress[sale.ticketId]==sale.seller,"not the owner");
-        require(sale.buyer!=address(0),"address doesn't exist");
+        require(tokenIdToAddress[mySale.ticketId]==mySale.seller,"not the owner");
+        require(mySale.buyer!=address(0),"address doesn't exist");
         return abi.encode(
             SALE_TYPEHASH,
-            sale.seller,
-            sale.buyer,
-            sale.ticketId,
-            sale.price
+            mySale.seller,
+            mySale.buyer,
+            mySale.ticketId,
+            mySale.price
         );
     }
 
     function ticketSale(
-        Sale calldata sale,
+        ISale.Sale memory mySale,
         bytes calldata signature
         ) 
-        external onlySeller(sale.ticketId) isValiid(sale.ticketId)
+        external onlySeller(mySale.ticketId) isValiid(mySale.ticketId)
     {
-        require(tokenIdToAddress[sale.ticketId]==sale.seller,"not the owner");
-        require(sale.buyer!=address(0),"Cannot send to a null address");
+        require(tokenIdToAddress[mySale.ticketId]==mySale.seller,"not the owner");
+        require(mySale.buyer!=address(0),"Cannot send to a null address");
 
         address signer = _hashTypedDataV4(
-            keccak256(encodeSale(sale))
+            keccak256(encodeSale(mySale))
         ).recover(signature);   
 
-        require(signer==ownerOf(sale.ticketId),"Only owner can be the signer"); 
+        require(signer==ownerOf(mySale.ticketId),"Only owner can be the signer"); 
 
-        tokenIdToAddress[sale.ticketId]=sale.buyer;
-        emit TicketResale(sale.seller,sale.buyer,sale.ticketId);
+        tokenIdToAddress[mySale.ticketId]=mySale.buyer;
+        emit TicketResale(mySale.seller,mySale.buyer,mySale.ticketId);
 
-        safeTransferFrom(sale.seller,sale.buyer,sale.ticketId);
+        safeTransferFrom(mySale.seller,mySale.buyer,mySale.ticketId);
     }
 
     function addToPool(uint256 _ticketId)external isValiid(_ticketId){
