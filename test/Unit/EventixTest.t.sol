@@ -3,8 +3,8 @@
 pragma solidity ^0.8.19;
 
 import {Eventix} from "../../src/Eventix.sol";
-import {Test} from "forge-std/Test.sol";
-import {Vm} from "forge-std/Vm.sol";
+import {Test} from "lib/forge-std/src/Test.sol";
+import {Vm} from "lib/forge-std/src/Vm.sol";
 import {DeployEventix} from "../../script/DeployEventix.s.sol";
 import {ISale} from "../../src/ISale.sol";
 
@@ -129,7 +129,6 @@ contract EventixTest is Test{
         ticketId:_ticketId,
         price:_price
     });
-     eventix.encodeSale(sale);
      //eventix.ticketSale(sale,)
     
      

@@ -158,7 +158,7 @@ contract Eventix is ERC721,EIP712,AccessControl,ERC721URIStorage{
     }
 
     function encodeSale(ISale.Sale memory mySale)
-    public  view onlySeller(mySale.ticketId) 
+    internal  view onlySeller(mySale.ticketId) 
     isValiid(mySale.ticketId)
     returns(bytes memory)
     {
@@ -300,6 +300,9 @@ contract Eventix is ERC721,EIP712,AccessControl,ERC721URIStorage{
         returns(address)
     {
         return idToTicketInfo[_ticketId].owner;
+    }
+    function getTypeHash()public pure returns(bytes32){
+        return SALE_TYPEHASH;
     }
 
     ////////

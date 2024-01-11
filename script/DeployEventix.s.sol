@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-import {Script, console2} from "forge-std/Script.sol";
+import {Script, console2} from "lib/forge-std/src/Script.sol";
 import {Eventix} from "../src/Eventix.sol";
 
 contract DeployEventix is Script {

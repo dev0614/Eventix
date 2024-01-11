@@ -45,5 +45,5 @@ deploy:
 # cast abi-encode "constructor(uint256)" 1000000000000000000000000 -> 0x00000000000000000000000000000000000000000000d3c21bcecceda1000000
 # Update with your contract address, constructor arguments and anything else
 verify:
-	@forge verify-contract --chain-id 11155111 --num-of-optimizations 200 --watch --constructor-args 00000000000000000000000066aaf3098e1eb1f24348e84f509d8bcfd92d0620 --etherscan-api-key $(ETHERSCAN_API_KEY) --compiler-version 0.8.21+commit.d9974bed 0xE89999a5ac15e1bbC6401A11f5CF0b0Bf72ce611 src/Eventix.sol:Eventix
-#https://sepolia.etherscan.io/address/0xe89999a5ac15e1bbc6401a11f5cf0b0bf72ce611
+	@forge verify-contract --chain-id 11155111 --num-of-optimizations 200 --watch --constructor-args 00000000000000000000000066aaf3098e1eb1f24348e84f509d8bcfd92d0620 --etherscan-api-key $(ETHERSCAN_API_KEY) --compiler-version 0.8.21+commit.d9974bed 0x63Ab7157810Af3386491b4Efbff79bED0aAe41DA src/Eventix.sol:Eventix
+#https://sepolia.etherscan.io/address/0x63ab7157810af3386491b4efbff79bed0aae41da
