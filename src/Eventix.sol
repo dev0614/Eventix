@@ -216,24 +216,26 @@ contract Eventix is ERC721,EIP712,AccessControl,ERC721URIStorage{
 
         uint256 currentTimeToEvent=idToTicketInfo[_ticketId].initialtimeToEvent-block.timestamp;
         uint256 category;
+        priceShift = [0, 25, 55];
 
         if(currentTimeToEvent> 7 days){
             category=0;
+            return idToTicketInfo[_ticketId].basePrice;
         }
         else if(currentTimeToEvent>3 && currentTimeToEvent<=7 days){
             category=1;
+            return idToTicketInfo[_ticketId].basePrice + (idToTicketInfo[_ticketId].basePrice* priceShift[category])/100;
         }
         else{
             category=2;
+            return idToTicketInfo[_ticketId].basePrice + (idToTicketInfo[_ticketId].basePrice* priceShift[category])/100;
         }
 
-        priceShift = [0, 25, 55];
 
-        return idToTicketInfo[_ticketId].basePrice + (idToTicketInfo[_ticketId].basePrice* priceShift[category])/100;
     }
 
     function buyFromPool()external payable{
-
+        require(ticketsInThePool.length>0,"Pool is empty");
         uint256 _ticketId=ticketsInThePool[0];
         require(ownerOf(_ticketId)==address(this),"This ticket is not added to the pool");
         require(isValid[_ticketId]==true,"ticketId is not valid");
@@ -303,6 +305,10 @@ contract Eventix is ERC721,EIP712,AccessControl,ERC721URIStorage{
     }
     function getTypeHash()public pure returns(bytes32){
         return SALE_TYPEHASH;
+    }
+
+    function getTicketsInThePool()public view returns(uint256){
+        return ticketsInThePool.length;
     }
 
     ////////
