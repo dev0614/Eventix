@@ -24,7 +24,7 @@
 
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -36,7 +36,7 @@ import "./ISale.sol";
 error Eventix__OnlySellerCanEncode();
 error Eventix__TicketIsInvalid();
 
-contract Eventix is ERC721,EIP712,AccessControl,ERC721URIStorage{
+contract Eventix is ERC721Enumerable,EIP712,AccessControl,ERC721URIStorage{
     using ECDSA for bytes32;
     
 
@@ -310,6 +310,9 @@ contract Eventix is ERC721,EIP712,AccessControl,ERC721URIStorage{
     function getTicketsInThePool()public view returns(uint256){
         return ticketsInThePool.length;
     }
+    function getTicketIdsInThePool(uint120 index)public view returns(uint256){
+        return ticketsInThePool[index];
+    }
 
     ////////
 
@@ -345,9 +348,25 @@ contract Eventix is ERC721,EIP712,AccessControl,ERC721URIStorage{
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(AccessControl,ERC721,ERC721URIStorage) 
+        override(AccessControl,ERC721Enumerable,ERC721URIStorage) 
         returns (bool) 
     {
         return super.supportsInterface(interfaceId);
+    }
+    function _increaseBalance(address account, uint128 amount) 
+        internal 
+        override(ERC721,ERC721Enumerable) 
+    {
+        super._increaseBalance(account, amount);
+    }
+
+    function _update(address to, uint256 tokenId,address auth) 
+        internal 
+        override(ERC721,ERC721Enumerable) 
+        returns(address) 
+    {
+      address previousOwner = super._update(to, tokenId, auth);
+
+      return previousOwner;
     }
 }
