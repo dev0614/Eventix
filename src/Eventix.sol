@@ -100,7 +100,7 @@ contract Eventix is ERC721Enumerable,EIP712,AccessControl,ERC721URIStorage{
         _;
     }
     modifier isValiid(uint256 _ticketId){
-        if(isValid[_ticketId]==true){
+        if(isValid[_ticketId]!=true){
             revert Eventix__TicketIsInvalid();
         }
         _;

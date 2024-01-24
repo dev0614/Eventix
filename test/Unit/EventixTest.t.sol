@@ -7,8 +7,9 @@ import {Test} from "lib/forge-std/src/Test.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import {DeployEventix} from "../../script/DeployEventix.s.sol";
 import {ISale} from "../../src/ISale.sol";
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
-contract EventixTest is Test{
+contract EventixTest is Test,EIP712{
     Eventix eventix;
     address public minter=0x66aAf3098E1eB1F24348e84F509d8bcfD92D0620;
     address alice=makeAddr("alice");
@@ -19,6 +20,7 @@ contract EventixTest is Test{
     uint256 _date=25;
     uint256 numdaysToEvent=24;
     address payable _to=payable(0xF941d25cEB9A56f36B2E246eC13C125305544283);
+    uint256 toPrivKey=vm.envUint("OWNER_PRIVATE_KEY");
     string  _tokenURI="https://api.pudgypenguins.io/lil/9946";
 
 
@@ -30,6 +32,8 @@ contract EventixTest is Test{
         Platinum,
         Diamond
     }
+
+    constructor()EIP712("Eventix","1.00"){}
 
     // //struct
     // struct Sale{
@@ -113,9 +117,9 @@ contract EventixTest is Test{
         );
     }
 
-    function testTicketSale()public{
-    
-    uint256 _ticketId=eventix.ticketMint(
+    function testTicketSale() public {
+        // Set up a ticket for testing
+        uint256 _ticketId = eventix.ticketMint(
             _price,
             eventix.getTier(0),
             _date,
@@ -123,15 +127,48 @@ contract EventixTest is Test{
             _to,
             _tokenURI
         );
-    ISale.Sale memory sale=ISale.Sale({
-        seller:_to,
-        buyer:msg.sender,
-        ticketId:_ticketId,
-        price:_price
-    });
-     //eventix.ticketSale(sale,)
-    
-     
 
+        // Set up sale data
+        address buyer = makeAddr("buyer");
+        uint256 salePrice = 0.02 ether;
+        ISale.Sale memory sale = ISale.Sale({
+            seller: _to,
+            buyer: buyer,
+            ticketId: _ticketId,
+            price: salePrice
+        });
+
+        bytes32 structHash = keccak256(abi.encode(
+            eventix.SALE_TYPEHASH(),
+            sale.seller,
+            sale.buyer,
+            sale.ticketId,
+            sale.price
+        ));
+
+        vm.startPrank(address(_to));
+        
+        bytes32 digest = _hashTypedDataV4(structHash);
+
+        // Simulate seller signing the sale
+        bytes memory signature = signSale(digest, toPrivKey);
+
+        // Execute the ticket sale
+        eventix.ticketSale(sale, signature);
+
+        // Assertions
+        assertEq(eventix.ownerOf(_ticketId), buyer);
+        // Additional checks for state changes, balances, etc.
+
+        vm.stopPrank();
+    }
+
+    function signSale(bytes32 digest, uint256 privateKey ) internal pure returns (bytes memory) {
+        // Simulate the signing using Foundry's vm.sign, which returns (v, r, s)
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
+
+        // Combine v, r, and s components into a single bytes signature
+        return abi.encodePacked(r, s, v);
     }
 }
+    
